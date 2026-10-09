@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ChurnSight AI — Enterprise Prediction Platform</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --card: #222636;
+    --accent: #6c63ff;
+    --accent2: #00d4aa;
+    --danger: #ff4757;
+    --warn: #ffa502;
+    --text: #e8eaf6;
+    --muted: #8892b0;
+    --border: #2d3250;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  /* ---- HERO ---- */
+  .hero {
+    width: 100%;
+    background: linear-gradient(135deg, #13163b 0%, #1a0f3a 50%, #0f1a2e 100%);
+    padding: 60px 24px 40px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+  }
+  .hero-logo { font-size: 2.8rem; margin-bottom: 12px; }
+  .hero h1 { font-size: 2rem; font-weight: 700; letter-spacing: -0.5px; }
+  .hero h1 span { color: var(--accent); }
+  .hero p { color: var(--muted); margin-top: 10px; font-size: 1rem; max-width: 600px; margin-inline: auto; }
+
+  /* ---- BADGES ---- */
+  .badges {
+    display: flex; gap: 10px; flex-wrap: wrap;
+    justify-content: center; margin-top: 20px;
+  }
+  .badge {
+    background: rgba(108,99,255,0.15);
+    border: 1px solid rgba(108,99,255,0.4);
+    border-radius: 20px;
+    padding: 5px 14px;
+    font-size: 0.78rem;
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  /* ---- MAIN ---- */
+  .main { width: 100%; max-width: 860px; padding: 40px 24px; }
+
+  /* ---- UPLOAD CARD ---- */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 36px 40px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+  }
+  .card h2 { font-size: 1.2rem; margin-bottom: 24px; font-weight: 600; }
+  .card h2 span { color: var(--accent2); }
+
+  /* ---- DROP ZONE ---- */
+  .drop-zone {
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    padding: 28px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .2s, background .2s;
+    position: relative;
+    margin-bottom: 20px;
+  }
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: var(--accent);
+    background: rgba(108,99,255,0.06);
+  }
+  .drop-zone input[type="file"] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  }
+  .drop-icon { font-size: 2rem; margin-bottom: 8px; }
+  .drop-label { font-weight: 600; color: var(--text); }
+  .drop-hint { color: var(--muted); font-size: 0.82rem; margin-top: 4px; }
+  .file-name {
+    margin-top: 8px; color: var(--accent2); font-size: 0.85rem;
+    font-weight: 600; display: none;
+  }
+
+  /* ---- SCHEMA HINT ---- */
+  .schema-hint {
+    background: rgba(0,212,170,0.06);
+    border-left: 3px solid var(--accent2);
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 0.82rem;
+    color: var(--muted);
+    margin-bottom: 20px;
+  }
+  .schema-hint code {
+    color: var(--accent2);
+    background: rgba(0,212,170,0.12);
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-size: 0.8rem;
+  }
+
+  /* ---- BUTTON ---- */
+  .btn-run {
+    width: 100%;
+    padding: 16px;
+    background: linear-gradient(135deg, #6c63ff, #4f46e5);
+    color: #fff;
+    font-size: 1.05rem;
+    font-weight: 700;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    letter-spacing: 0.3px;
+    transition: opacity .2s, transform .1s;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+  }
+  .btn-run:hover { opacity: 0.92; transform: translateY(-1px); }
+  .btn-run:active { transform: translateY(0); }
+  .btn-run:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* ---- LOADING ---- */
+  .loading-overlay {
+    display: none;
+    position: fixed; inset: 0; background: rgba(15,17,23,0.92);
+    z-index: 999;
+    flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 20px;
+  }
+  .loading-overlay.active { display: flex; }
+  .spinner {
+    width: 56px; height: 56px;
+    border: 4px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.9s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { color: var(--text); font-size: 1rem; font-weight: 600; }
+  .loading-steps {
+    display: flex; flex-direction: column; gap: 8px; align-items: center;
+    color: var(--muted); font-size: 0.85rem;
+  }
+
+  /* ---- ERROR ---- */
+  .error-box {
+    background: rgba(255,71,87,0.1);
+    border: 1px solid var(--danger);
+    border-radius: 12px;
+    padding: 16px 20px;
+    color: var(--danger);
+    margin-bottom: 24px;
+    font-size: 0.88rem;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+
+  /* ---- HOW IT WORKS ---- */
+  .how {
+    margin-top: 40px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+  }
+  .step-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+  }
+  .step-card .num {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), #4f46e5);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 0.9rem; margin: 0 auto 12px;
+  }
+  .step-card h3 { font-size: 0.9rem; font-weight: 700; margin-bottom: 6px; }
+  .step-card p { color: var(--muted); font-size: 0.8rem; line-height: 1.5; }
+
+  footer {
+    margin-top: auto; padding: 24px;
+    color: var(--muted); font-size: 0.78rem; text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text">Running Enterprise ML Pipeline…</div>
+  <div class="loading-steps">
+    <span>⚙️ Data leakage audit (6 checks)</span>
+    <span>🤖 Training GBM churn classifier + bootstrapping 95% CIs</span>
+    <span>📈 Fitting quantile sales forecast models</span>
+    <span>🔍 Running PSI + KS drift monitoring</span>
+    <span>📊 Generating dashboard & Power BI exports</span>
+  </div>
+</div>
+
+<!-- Hero -->
+<div class="hero">
+  <div class="hero-logo">🔮</div>
+  <h1>ChurnSight <span>AI</span></h1>
+  <p>Enterprise Churn Prediction &amp; Revenue Forecasting Platform.<br/>
+  Upload your customer &amp; sales CSVs — get instant ML-powered insights.</p>
+  <div class="badges">
+    <span class="badge">GBM Classifier</span>
+    <span class="badge">Quantile Regression</span>
+    <span class="badge">Bootstrap 95% CIs</span>
+    <span class="badge">PSI Drift Monitor</span>
+    <span class="badge">Power BI Export</span>
+    <span class="badge">Leakage Audit</span>
+  </div>
+</div>
+
+<div class="main">
+
+  {% if error %}
+  <div class="error-box">❌ {{ error }}</div>
+  {% endif %}
+
+  <div class="card">
+    <h2>📂 Upload Your <span>Data Files</span></h2>
+
+    <form method="POST" action="/predict" enctype="multipart/form-data" id="predictForm">
+
+      <!-- Customer CSV -->
+      <div class="schema-hint">
+        <strong>Customer CSV required columns:</strong>
+        <code>customerID</code> <code>MonthlyCharges</code> <code>tenure</code> <code>Contract</code>
+        — and optionally <code>Churn</code>, <code>TotalCharges</code>, <code>InternetService</code>, etc.<br/>
+        Don't have data? <strong>Run <code>main.py</code> first</strong> to generate the sample dataset in <code>data/</code>.
+      </div>
+
+      <label style="font-size:.85rem;font-weight:600;color:var(--muted);display:block;margin-bottom:6px;">
+        👥 Customer CSV File
+      </label>
+      <div class="drop-zone" id="custDrop">
+        <input type="file" name="customers_file" accept=".csv" id="custInput" required
+               onchange="showFileName(this,'custName')"/>
+        <div class="drop-icon">📋</div>
+        <div class="drop-label">Click or drag &amp; drop Customer CSV</div>
+        <div class="drop-hint">e.g. telco_customers.csv</div>
+        <div class="file-name" id="custName"></div>
+      </div>
+
+      <!-- Sales CSV -->
+      <div class="schema-hint" style="margin-top:0;">
+        <strong>Sales CSV required columns:</strong>
+        <code>month</code> (YYYY-MM) &nbsp;<code>revenue</code> (numeric)
+        — optional: <code>new_customers</code> <code>active_customers</code> <code>churned_customers</code>
+      </div>
+
+      <label style="font-size:.85rem;font-weight:600;color:var(--muted);display:block;margin-bottom:6px;">
+        📈 Monthly Sales CSV File
+      </label>
+      <div class="drop-zone" id="salesDrop">
+        <input type="file" name="sales_file" accept=".csv" id="salesInput" required
+               onchange="showFileName(this,'salesName')"/>
+        <div class="drop-icon">💰</div>
+        <div class="drop-label">Click or drag &amp; drop Sales CSV</div>
+        <div class="drop-hint">e.g. monthly_revenue.csv</div>
+        <div class="file-name" id="salesName"></div>
+      </div>
+
+      <button type="submit" class="btn-run" id="runBtn">
+        🚀 Run AI Prediction Pipeline
+      </button>
+    </form>
+  </div>
+
+  <!-- How it works -->
+  <div class="how">
+    <div class="step-card">
+      <div class="num">1</div>
+      <h3>Upload CSVs</h3>
+      <p>Drop your customer records and monthly revenue data in any CSV format.</p>
+    </div>
+    <div class="step-card">
+      <div class="num">2</div>
+      <h3>ML Pipeline Runs</h3>
+      <p>GBM classifier trains, quantile regressors forecast, 500-iter bootstrap CIs computed.</p>
+    </div>
+    <div class="step-card">
+      <div class="num">3</div>
+      <h3>Full Metrics Dashboard</h3>
+      <p>AUC, F1, RMSE, MAPE, Brier Score, ROC, Calibration, Confusion Matrix — all with 95% CIs.</p>
+    </div>
+    <div class="step-card">
+      <div class="num">4</div>
+      <h3>Power BI Export</h3>
+      <p>6 ready-to-load CSV tables for your Power BI dashboards, downloadable instantly.</p>
+    </div>
+  </div>
+
+</div>
+
+<footer>ChurnSight AI &mdash; Enterprise Edition &mdash; Student Project Demo</footer>
+
+<script>
+  function showFileName(input, nameId) {
+    const el = document.getElementById(nameId);
+    if (input.files[0]) {
+      el.textContent = '✅ ' + input.files[0].name;
+      el.style.display = 'block';
+    }
+  }
+
+  document.getElementById('predictForm').addEventListener('submit', function(e) {
+    const cust = document.getElementById('custInput').files[0];
+    const sales = document.getElementById('salesInput').files[0];
+    if (!cust || !sales) return;
+    document.getElementById('runBtn').disabled = true;
+    document.getElementById('loadingOverlay').classList.add('active');
+  });
+
+  // Drag-over style
+  document.querySelectorAll('.drop-zone').forEach(zone => {
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+    zone.addEventListener('drop', e => { zone.classList.remove('drag-over'); });
+  });
+</script>
+</body>
+</html>

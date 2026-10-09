@@ -1,0 +1,7 @@
+Model,Metric,Value,CI_Lower,CI_Upper,Target_or_Baseline,Status
+XGBoost + Logistic Ensemble,Precision,0.4904891304347826,,,0.5,Below Target
+XGBoost + Logistic Ensemble,Recall,0.7489626556016598,,,0.7,Meets Target
+XGBoost + Logistic Ensemble,Brier Score,0.19514781046278235,,,0.2,Meets Target
+Ridge Trend + Seasonality,MAPE,0.7778305390139256,,,0.05,Above Target
+Ridge Trend + Seasonality,RMSE,6174.831510601308,,,,Reported
+Ridge Trend + Seasonality,Interval Coverage,0.75,,,0.8,Below Target

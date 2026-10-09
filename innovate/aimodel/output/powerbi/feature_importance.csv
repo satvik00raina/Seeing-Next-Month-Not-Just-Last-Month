@@ -1,0 +1,72 @@
+feature,importance
+tenure,0.108386084
+Contract_Month-to-month,0.09456178
+is_month_to_month,0.09425415
+is_two_year_contract,0.082874306
+monthly_charge_per_tenure,0.054789934
+InternetService_Fiber optic,0.049564842
+tenure_squared,0.049257234
+Contract_Two year,0.047634535
+has_fiber,0.033383198
+OnlineSecurity_No,0.02982305
+MultipleLines_Yes,0.022576565
+has_streamingtv,0.017043725
+has_multiplelines,0.015561859
+is_electronic_check,0.015550034
+TechSupport_No,0.013637645
+has_phoneservice,0.013241762
+PhoneService_Yes,0.013169113
+DeviceProtection_No,0.0121701695
+PaperlessBilling_No,0.012091598
+SeniorCitizen,0.011714314
+PaperlessBilling_Yes,0.01128043
+OnlineBackup_Yes,0.011244004
+MonthlyCharges,0.010559972
+TotalCharges,0.010033248
+estimated_annual_charge,0.009881256
+PaymentMethod_Electronic check,0.009725625
+has_techsupport,0.009137161
+has_streamingmovies,0.009081222
+TechSupport_Yes,0.008861215
+is_senior,0.008713142
+has_onlinebackup,0.008598306
+InternetService_DSL,0.008524906
+PaymentMethod_Credit card (automatic),0.008365421
+has_onlinesecurity,0.008108087
+PhoneService_No,0.007851713
+num_services,0.0075669093
+PaymentMethod_Mailed check,0.007310407
+Partner_No,0.0070040543
+has_partner,0.006993472
+OnlineSecurity_Yes,0.0069244294
+is_auto_payment,0.0061617047
+OnlineBackup_No,0.006083348
+has_dependents,0.00558437
+gender_Female,0.005261056
+MultipleLines_No,0.004810917
+gender_Male,0.002795838
+StreamingTV_No,0.002251738
+is_long_term_customer,0.0
+is_early_customer,0.0
+is_new_customer,0.0
+Partner_Yes,0.0
+is_one_year_contract,0.0
+tenure_log,0.0
+has_deviceprotection,0.0
+has_no_internet,0.0
+Dependents_Yes,0.0
+Dependents_No,0.0
+DeviceProtection_No internet service,0.0
+DeviceProtection_Yes,0.0
+InternetService_No,0.0
+MultipleLines_No phone service,0.0
+OnlineSecurity_No internet service,0.0
+OnlineBackup_No internet service,0.0
+TechSupport_No internet service,0.0
+StreamingMovies_Yes,0.0
+StreamingMovies_No,0.0
+StreamingTV_Yes,0.0
+StreamingTV_No internet service,0.0
+StreamingMovies_No internet service,0.0
+Contract_One year,0.0
+PaymentMethod_Bank transfer (automatic),0.0

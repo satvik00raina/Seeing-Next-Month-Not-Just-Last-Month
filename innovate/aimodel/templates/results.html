@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ChurnSight AI — Results Dashboard</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --card: #222636;
+    --accent: #6c63ff;
+    --accent2: #00d4aa;
+    --danger: #ff4757;
+    --warn: #ffa502;
+    --ok: #2ed573;
+    --text: #e8eaf6;
+    --muted: #8892b0;
+    --border: #2d3250;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; }
+
+  /* ---- HEADER ---- */
+  .topbar {
+    background: linear-gradient(90deg, #13163b, #1a0f3a);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 28px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  }
+  .topbar-left { display: flex; align-items: center; gap: 12px; }
+  .topbar-left h1 { font-size: 1.15rem; font-weight: 700; }
+  .topbar-left h1 span { color: var(--accent); }
+  .topbar-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+  .btn {
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 0.83rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    text-decoration: none;
+    display: inline-flex; align-items: center; gap: 6px;
+    transition: opacity .2s;
+  }
+  .btn:hover { opacity: .85; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+  .btn-success { background: var(--accent2); color: #0f1117; }
+
+  /* ---- LAYOUT ---- */
+  .container { max-width: 1400px; margin: 0 auto; padding: 28px 20px; }
+
+  /* ---- KPI ROW ---- */
+  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 28px; }
+  .kpi {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 18px 16px; text-align: center;
+  }
+  .kpi .kpi-icon { font-size: 1.5rem; margin-bottom: 6px; }
+  .kpi .kpi-value { font-size: 1.6rem; font-weight: 800; }
+  .kpi .kpi-label { color: var(--muted); font-size: 0.75rem; margin-top: 4px; font-weight: 500; }
+  .kpi.accent { border-color: var(--accent); }
+  .kpi.success { border-color: var(--accent2); }
+  .kpi.danger { border-color: var(--danger); }
+  .kpi.warn { border-color: var(--warn); }
+
+  /* ---- SECTION TITLE ---- */
+  .sec-title {
+    font-size: 1rem; font-weight: 700;
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 16px;
+  }
+  .sec-title::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+
+  /* ---- GRID ---- */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+  @media(max-width: 900px) {
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  }
+
+  /* ---- CARD ---- */
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 22px;
+  }
+  .card-title { font-size: 0.88rem; font-weight: 700; margin-bottom: 16px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+
+  /* ---- METRICS TABLE ---- */
+  .metrics-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+  .metrics-table th {
+    text-align: left; padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: .5px;
+  }
+  .metrics-table td { padding: 10px 12px; border-bottom: 1px solid rgba(45,50,80,0.5); }
+  .metrics-table tr:last-child td { border-bottom: none; }
+  .metrics-table .metric-name { font-weight: 700; }
+  .metrics-table .metric-val { font-size: 1rem; font-weight: 800; color: var(--accent2); font-family: monospace; }
+  .metrics-table .metric-ci { font-size: 0.75rem; color: var(--muted); font-family: monospace; }
+  .metrics-table .grade { display: inline-block; padding: 2px 9px; border-radius: 10px; font-size: 0.72rem; font-weight: 700; }
+  .grade-A { background: rgba(46,213,115,0.15); color: var(--ok); }
+  .grade-B { background: rgba(255,165,2,0.15); color: var(--warn); }
+  .grade-C { background: rgba(255,71,87,0.15); color: var(--danger); }
+
+  /* ---- PLOTLY CHART ---- */
+  .chart { width: 100%; min-height: 300px; }
+
+  /* ---- CONFUSION MATRIX ---- */
+  #cmChart { min-height: 320px; }
+
+  /* ---- DRIFT TABLE ---- */
+  .drift-table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
+  .drift-table th { padding: 8px 10px; border-bottom: 1px solid var(--border); color: var(--muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: .5px; text-align: left; }
+  .drift-table td { padding: 8px 10px; border-bottom: 1px solid rgba(45,50,80,0.4); }
+  .drift-table tr:last-child td { border-bottom: none; }
+  .pill {
+    display: inline-block; padding: 2px 10px; border-radius: 10px;
+    font-size: 0.72rem; font-weight: 700;
+  }
+  .pill-HIGH { background: rgba(255,71,87,0.15); color: var(--danger); }
+  .pill-MEDIUM { background: rgba(255,165,2,0.15); color: var(--warn); }
+  .pill-LOW { background: rgba(46,213,115,0.15); color: var(--ok); }
+
+  /* ---- LEAKAGE ---- */
+  .leakage-list { display: flex; flex-direction: column; gap: 8px; }
+  .leakage-item {
+    display: flex; align-items: flex-start; gap: 10px;
+    background: var(--surface); border-radius: 8px; padding: 10px 14px;
+    font-size: 0.83rem;
+  }
+  .leakage-icon { font-size: 1rem; flex-shrink: 0; }
+  .leakage-name { font-weight: 700; color: var(--text); margin-bottom: 2px; }
+  .leakage-detail { color: var(--muted); font-size: 0.78rem; }
+
+  /* ---- HIGH RISK TABLE ---- */
+  .risk-wrap { overflow-x: auto; }
+  .risk-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; white-space: nowrap; }
+  .risk-table th { padding: 8px 10px; background: var(--surface); border-bottom: 1px solid var(--border); color: var(--muted); font-size: 0.7rem; text-transform: uppercase; letter-spacing: .5px; text-align: left; }
+  .risk-table td { padding: 8px 10px; border-bottom: 1px solid rgba(45,50,80,0.4); }
+  .risk-table tr:hover td { background: rgba(108,99,255,0.05); }
+  .risk-pct {
+    display: inline-block; min-width: 42px; text-align: center;
+    padding: 2px 8px; border-radius: 8px; font-weight: 700; font-size: 0.8rem;
+  }
+  .risk-high { background: rgba(255,71,87,0.2); color: #ff6b81; }
+  .risk-med  { background: rgba(255,165,2,0.2); color: #ffbe57; }
+  .risk-low  { background: rgba(108,99,255,0.2); color: #a29bfe; }
+
+  /* ---- DOWNLOAD SECTION ---- */
+  .dl-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+  .dl-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 16px;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  }
+  .dl-card .dl-info .dl-name { font-size: 0.82rem; font-weight: 700; margin-bottom: 3px; }
+  .dl-card .dl-info .dl-desc { font-size: 0.72rem; color: var(--muted); }
+  .dl-btn { padding: 5px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 600;
+             background: rgba(108,99,255,0.2); color: var(--accent); text-decoration: none;
+             border: 1px solid rgba(108,99,255,0.4); white-space: nowrap; }
+  .dl-btn:hover { background: rgba(108,99,255,0.35); }
+
+  /* ---- FORECAST HERO ---- */
+  .forecast-hero {
+    background: linear-gradient(135deg, rgba(0,212,170,0.1), rgba(108,99,255,0.08));
+    border: 1px solid var(--accent2);
+    border-radius: 14px; padding: 24px 28px;
+    display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
+    margin-bottom: 28px;
+  }
+  .forecast-hero .fh-main { flex: 1; min-width: 200px; }
+  .forecast-hero .fh-month { color: var(--muted); font-size: 0.83rem; font-weight: 600; margin-bottom: 4px; }
+  .forecast-hero .fh-rev { font-size: 2.2rem; font-weight: 800; color: var(--accent2); }
+  .forecast-hero .fh-interval { color: var(--muted); font-size: 0.82rem; margin-top: 6px; }
+  .forecast-hero .fh-badges { display: flex; gap: 10px; flex-wrap: wrap; }
+  .fh-badge { background: rgba(108,99,255,0.15); border: 1px solid rgba(108,99,255,0.35); border-radius: 8px; padding: 8px 14px; text-align: center; }
+  .fh-badge .fhb-val { font-size: 1.1rem; font-weight: 800; color: var(--text); }
+  .fh-badge .fhb-lbl { font-size: 0.7rem; color: var(--muted); margin-top: 2px; }
+
+  /* ---- TAB NAV ---- */
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 24px; flex-wrap: wrap; }
+  .tab-btn {
+    padding: 10px 18px; border-radius: 8px 8px 0 0;
+    background: transparent; border: none; color: var(--muted);
+    font-size: 0.85rem; font-weight: 600; cursor: pointer;
+    border-bottom: 2px solid transparent; transition: color .2s, border-color .2s;
+  }
+  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab-btn:hover:not(.active) { color: var(--text); }
+  .tab-pane { display: none; }
+  .tab-pane.active { display: block; }
+
+  .mb-20 { margin-bottom: 20px; }
+  .mb-28 { margin-bottom: 28px; }
+  .mt-20 { margin-top: 20px; }
+
+  /* PROGRESS BAR */
+  .progress-wrap { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .progress-label { font-size: 0.78rem; color: var(--muted); min-width: 90px; }
+  .progress-bar-bg { flex: 1; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+  .progress-bar-fill { height: 100%; border-radius: 3px; transition: width 1s ease; }
+</style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="topbar">
+  <div class="topbar-left">
+    <span style="font-size:1.5rem">🔮</span>
+    <h1>ChurnSight <span>AI</span> — Results</h1>
+  </div>
+  <div class="topbar-actions">
+    <a href="/" class="btn btn-outline">← New Prediction</a>
+    <a href="/download_dashboard" class="btn btn-primary">⬇ Full Dashboard HTML</a>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- ====== KPI ROW ====== -->
+  <div class="kpi-row mb-28">
+    <div class="kpi accent">
+      <div class="kpi-icon">👥</div>
+      <div class="kpi-value">{{ "{:,}".format(s.meta.n_customers) }}</div>
+      <div class="kpi-label">Customers Scored</div>
+    </div>
+    <div class="kpi danger">
+      <div class="kpi-icon">🚨</div>
+      <div class="kpi-value">{{ "{:,}".format(s.high_risk_table|length) }}+</div>
+      <div class="kpi-label">High-Risk Accounts (≥50%)</div>
+    </div>
+    <div class="kpi success">
+      <div class="kpi-icon">📈</div>
+      <div class="kpi-value">${{ "{:,.0f}".format(s.next_rev) if s.next_rev else "N/A" }}</div>
+      <div class="kpi-label">Next Month Forecast</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-icon">🎯</div>
+      <div class="kpi-value">{{ s.churn_metrics.AUC.value | round(3) if s.churn_metrics.AUC.value else 'N/A' }}</div>
+      <div class="kpi-label">Model AUC</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-icon">📉</div>
+      <div class="kpi-value">{{ s.sales_metrics.MAPE.value }}%</div>
+      <div class="kpi-label">Forecast MAPE</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-icon">{{ '🟢' if s.drifted_count == 0 else '🔴' }}</div>
+      <div class="kpi-value">{{ s.drifted_count }}/{{ s.total_features }}</div>
+      <div class="kpi-label">Features Drifted</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-icon">🛡️</div>
+      <div class="kpi-value">{{ s.leakage_passed }}/{{ s.leakage_total }}</div>
+      <div class="kpi-label">Leakage Checks Passed</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-icon">⏱️</div>
+      <div class="kpi-value">{{ s.elapsed }}s</div>
+      <div class="kpi-label">Pipeline Runtime</div>
+    </div>
+  </div>
+
+  <!-- ====== NEXT MONTH FORECAST HERO ====== -->
+  <div class="forecast-hero mb-28">
+    <div class="fh-main">
+      <div class="fh-month">Next Month Revenue Forecast — {{ s.next_month_label }}</div>
+      <div class="fh-rev">${{ "{:,.0f}".format(s.next_rev) if s.next_rev else "N/A" }}</div>
+      {% if s.next_lower and s.next_upper %}
+      <div class="fh-interval">80% Prediction Interval: ${{ "{:,.0f}".format(s.next_lower) }} – ${{ "{:,.0f}".format(s.next_upper) }}</div>
+      {% endif %}
+    </div>
+    <div class="fh-badges">
+      {% for name, m in s.sales_metrics.items() %}
+      <div class="fh-badge">
+        <div class="fhb-val">
+          {% if m.fmt == 'dollar' %}${{ "{:,.0f}".format(m.value) if m.value else 'N/A' }}
+          {% elif m.fmt == 'pct' %}{{ m.value }}%
+          {% elif m.value is not none %}{{ "%.4f"|format(m.value) }}
+          {% else %}N/A{% endif %}
+        </div>
+        <div class="fhb-lbl">{{ name }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- ====== TABS ====== -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab(event,'tab-churn')">🤖 Churn Model</button>
+    <button class="tab-btn" onclick="switchTab(event,'tab-sales')">📈 Sales Forecast</button>
+    <button class="tab-btn" onclick="switchTab(event,'tab-risk')">🚨 High-Risk Accounts</button>
+    <button class="tab-btn" onclick="switchTab(event,'tab-drift')">🔍 Drift Monitor</button>
+    <button class="tab-btn" onclick="switchTab(event,'tab-leakage')">🛡️ Leakage Audit</button>
+    <button class="tab-btn" onclick="switchTab(event,'tab-download')">⬇ Downloads</button>
+  </div>
+
+  <!-- ====== TAB: CHURN MODEL ====== -->
+  <div class="tab-pane active" id="tab-churn">
+
+    <!-- Full Metrics Matrix -->
+    <div class="sec-title mb-20">📊 Complete Metrics Matrix — with 95% Bootstrap Confidence Intervals</div>
+    <div class="card mb-20">
+      <table class="metrics-table">
+        <thead>
+          <tr>
+            <th>Metric</th>
+            <th>Value</th>
+            <th>95% Bootstrap CI</th>
+            <th>Grade</th>
+            <th>What it means</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for name, m in s.churn_metrics.items() %}
+          <tr>
+            <td class="metric-name">{{ name }}</td>
+            <td class="metric-val">
+              {% if m.value is not none %}{{ "%.4f"|format(m.value) }}{% else %}N/A{% endif %}
+            </td>
+            <td class="metric-ci">{{ m.ci }}</td>
+            <td>
+              {% if m.value is not none %}
+                {% if name == 'AUC' %}
+                  {% if m.value >= 0.8 %}<span class="grade grade-A">A — Excellent</span>
+                  {% elif m.value >= 0.7 %}<span class="grade grade-B">B — Good</span>
+                  {% else %}<span class="grade grade-C">C — Fair</span>{% endif %}
+                {% elif name == 'Brier Score' %}
+                  {% if m.value <= 0.15 %}<span class="grade grade-A">A — Excellent</span>
+                  {% elif m.value <= 0.25 %}<span class="grade grade-B">B — Good</span>
+                  {% else %}<span class="grade grade-C">C — Fair</span>{% endif %}
+                {% elif name in ['F1 Score','Precision','Recall','Accuracy'] %}
+                  {% if m.value >= 0.75 %}<span class="grade grade-A">A — Excellent</span>
+                  {% elif m.value >= 0.55 %}<span class="grade grade-B">B — Good</span>
+                  {% else %}<span class="grade grade-C">C — Fair</span>{% endif %}
+                {% else %}<span class="grade grade-B">—</span>{% endif %}
+              {% else %}—{% endif %}
+            </td>
+            <td style="color:var(--muted);font-size:.78rem;">
+              {% if name == 'AUC' %}Discrimination ability (1.0=perfect, 0.5=random)
+              {% elif name == 'F1 Score' %}Harmonic mean of Precision &amp; Recall
+              {% elif name == 'Precision' %}Of predicted churners, % actually churned
+              {% elif name == 'Recall' %}Of actual churners, % correctly caught
+              {% elif name == 'Accuracy' %}Overall correct predictions
+              {% elif name == 'Brier Score' %}Probability calibration error (lower=better)
+              {% elif name == 'KS Statistic' %}Max separation between churn/non-churn score distributions
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Visual Metric Bar -->
+    <div class="card mb-20">
+      <div class="card-title">Metric Visual Comparison</div>
+      {% for name, m in s.churn_metrics.items() %}
+      {% if m.value is not none and name != 'Brier Score' %}
+      <div class="progress-wrap">
+        <div class="progress-label">{{ name }}</div>
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill"
+               style="width: {{ (m.value * 100)|round }}%;
+                      background: {% if m.value >= 0.75 %}var(--ok){% elif m.value >= 0.55 %}var(--warn){% else %}var(--danger){% endif %};">
+          </div>
+        </div>
+        <span style="font-size:.8rem;font-weight:700;min-width:50px;text-align:right;">{{ "%.3f"|format(m.value) }}</span>
+      </div>
+      {% endif %}
+      {% endfor %}
+    </div>
+
+    <!-- ROC + Calibration side by side -->
+    <div class="grid-2 mb-20">
+      <div class="card">
+        <div class="card-title">ROC Curve</div>
+        <div id="rocChart" class="chart"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Calibration Curve</div>
+        <div id="calChart" class="chart"></div>
+      </div>
+    </div>
+
+    <!-- Confusion Matrix -->
+    <div class="card">
+      <div class="card-title">Confusion Matrix (Test Set)</div>
+      <div id="cmChart"></div>
+      <div style="margin-top:12px;color:var(--muted);font-size:.8rem;line-height:1.7;">
+        <strong style="color:var(--text)">Reading the matrix:</strong><br/>
+        <strong>TN</strong> (top-left) = Correctly predicted NOT churned &nbsp;|&nbsp;
+        <strong>FP</strong> (top-right) = Predicted churned but actually stayed &nbsp;|&nbsp;
+        <strong>FN</strong> (bottom-left) = Missed a churner &nbsp;|&nbsp;
+        <strong>TP</strong> (bottom-right) = Correctly caught churner
+      </div>
+    </div>
+
+  </div><!-- /tab-churn -->
+
+  <!-- ====== TAB: SALES FORECAST ====== -->
+  <div class="tab-pane" id="tab-sales">
+
+    <!-- Sales metrics row -->
+    <div class="grid-3 mb-20">
+      {% for name, m in s.sales_metrics.items() %}
+      <div class="kpi {{ 'success' if m.value and (m.fmt == 'pct' and m.value < 10) else '' }}">
+        <div class="kpi-icon">
+          {% if name == 'RMSE' %}📏{% elif name == 'MAPE' %}🎯{% elif name == 'R²' %}📐
+          {% elif name == 'MAE' %}📊{% else %}🎰{% endif %}
+        </div>
+        <div class="kpi-value">
+          {% if m.fmt == 'dollar' %}${{ "{:,.0f}".format(m.value) if m.value else 'N/A' }}
+          {% elif m.fmt == 'pct' %}{{ m.value }}%
+          {% elif m.value is not none %}{{ "%.4f"|format(m.value) }}
+          {% else %}N/A{% endif %}
+        </div>
+        <div class="kpi-label">{{ name }}</div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Sales Forecast Fan Chart -->
+    <div class="card mb-20">
+      <div class="card-title">Revenue Forecast — Historical + 12-Month Horizon (with Prediction Interval)</div>
+      <div id="forecastChart" style="min-height:380px;"></div>
+    </div>
+
+    <!-- Backtest Actual vs Predicted -->
+    <div class="card">
+      <div class="card-title">Holdout Backtest — Actual vs Predicted (12-Month Test Set)</div>
+      <div id="backtestChart" style="min-height:300px;"></div>
+      <div style="margin-top:12px;color:var(--muted);font-size:.8rem;">
+        MAPE = Mean Absolute Percentage Error on the withheld test months.
+        Lower MAPE = more accurate forecasts. &lt;10% is considered good for revenue forecasting.
+      </div>
+    </div>
+
+  </div><!-- /tab-sales -->
+
+  <!-- ====== TAB: HIGH RISK ACCOUNTS ====== -->
+  <div class="tab-pane" id="tab-risk">
+    <div class="sec-title mb-20">🚨 Top High-Risk Accounts (Churn Probability ≥ 50%) — Top 20 Shown</div>
+    <div class="card">
+      <div class="risk-wrap">
+        <table class="risk-table">
+          <thead>
+            <tr>
+              {% for col in s.high_risk_cols %}
+              <th>{{ col }}</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in s.high_risk_table %}
+            <tr>
+              {% for col in s.high_risk_cols %}
+              <td>
+                {% if col == 'churn_probability' %}
+                  {% set p = row[col] %}
+                  <span class="risk-pct {{ 'risk-high' if p >= 0.7 else ('risk-med' if p >= 0.5 else 'risk-low') }}">
+                    {{ "%.1f"|format(p * 100) }}%
+                  </span>
+                {% else %}
+                  {{ row[col] }}
+                {% endif %}
+              </td>
+              {% endfor %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if s.high_risk_table|length == 20 %}
+      <div style="margin-top:12px;color:var(--muted);font-size:.78rem;">
+        ⚠ Showing top 20 rows. Download <code>customer_churn_predictions.csv</code> for all records.
+      </div>
+      {% endif %}
+    </div>
+  </div><!-- /tab-risk -->
+
+  <!-- ====== TAB: DRIFT MONITOR ====== -->
+  <div class="tab-pane" id="tab-drift">
+    <div class="sec-title mb-20">🔍 Feature Drift Monitoring — PSI + KS Test</div>
+
+    <!-- PSI legend -->
+    <div class="card mb-20" style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;padding:14px 20px;">
+      <span style="font-size:.82rem;color:var(--muted);font-weight:600;">PSI Scale:</span>
+      <span class="pill pill-LOW">PSI &lt; 0.1 — No drift</span>
+      <span class="pill pill-MEDIUM">PSI 0.1–0.2 — Moderate drift</span>
+      <span class="pill pill-HIGH">PSI ≥ 0.2 — Significant drift — Retrain recommended</span>
+    </div>
+
+    <div class="card mb-20">
+      <div class="card-title">Overall Status: {{ s.drift_summary }}</div>
+      <div class="card-title" style="margin-top:4px;">Features Monitored: {{ s.total_features }} | Drifted (PSI≥0.2): {{ s.drifted_count }}</div>
+      <table class="drift-table" style="margin-top:14px;">
+        <thead>
+          <tr>
+            <th>Feature</th>
+            <th>PSI Score</th>
+            <th>KS Statistic</th>
+            <th>Status</th>
+            <th>Visual</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in s.drift_rows %}
+          <tr>
+            <td style="font-weight:600;">{{ row.feature }}</td>
+            <td style="font-family:monospace;font-weight:700;">{{ row.psi }}</td>
+            <td style="font-family:monospace;">{{ row.ks }}</td>
+            <td><span class="pill pill-{{ row.status }}">{{ row.status }}</span></td>
+            <td>
+              <div style="width:120px;height:6px;background:var(--border);border-radius:3px;overflow:hidden;">
+                <div style="height:100%;width:{{ [row.psi * 100 / 0.3, 100]|min }}%;border-radius:3px;
+                  background: {{ 'var(--danger)' if row.status == 'HIGH' else ('var(--warn)' if row.status == 'MEDIUM' else 'var(--ok)') }};"></div>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <div class="card-title">PSI Bar Chart</div>
+      <div id="psiChart" style="min-height:300px;"></div>
+    </div>
+  </div><!-- /tab-drift -->
+
+  <!-- ====== TAB: LEAKAGE AUDIT ====== -->
+  <div class="tab-pane" id="tab-leakage">
+    <div class="sec-title mb-20">🛡️ Data Leakage Audit — 6-Point Safety Checklist</div>
+    <div class="card">
+      <div style="margin-bottom:14px;color:var(--muted);font-size:.83rem;">
+        Data leakage occurs when future information leaks into training, inflating apparent accuracy.
+        All 6 checks must pass for reliable predictions.
+      </div>
+      <div class="leakage-list">
+        {% for check in s.leakage_checks %}
+        <div class="leakage-item" style="border-left: 3px solid {{ 'var(--ok)' if 'PASS' in check.status else 'var(--warn)' if 'WARN' in check.status else 'var(--danger)' }};">
+          <div class="leakage-icon">
+            {% if 'PASS' in check.status %}✅{% elif 'WARN' in check.status %}⚠️{% else %}❌{% endif %}
+          </div>
+          <div>
+            <div class="leakage-name">{{ check.name }}</div>
+            <div class="leakage-detail">{{ check.detail }}</div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div><!-- /tab-leakage -->
+
+  <!-- ====== TAB: DOWNLOADS ====== -->
+  <div class="tab-pane" id="tab-download">
+    <div class="sec-title mb-20">⬇ Download Power BI Tables &amp; Reports</div>
+    <div class="dl-grid mb-20">
+      {% set pbi_files = [
+        ('churn_predictions.csv', 'Churn Predictions', 'All customers with churn probability scores'),
+        ('sales_forecast.csv', 'Sales Forecast', '12-month revenue forecast with intervals'),
+        ('high_risk_customers.csv', 'High-Risk Accounts', 'Customers with churn prob ≥ 60%'),
+        ('model_metrics.csv', 'Model Metrics', 'AUC, F1, RMSE, MAPE and all other scores'),
+        ('drift_report.csv', 'Drift Report', 'PSI and KS drift scores per feature'),
+        ('feature_importance.csv', 'Feature Importance', 'Top drivers of churn prediction'),
+      ] %}
+      {% for fname, name, desc in pbi_files %}
+      <div class="dl-card">
+        <div class="dl-info">
+          <div class="dl-name">{{ name }}</div>
+          <div class="dl-desc">{{ desc }}</div>
+        </div>
+        <a href="/download/{{ fname }}" class="dl-btn">⬇ CSV</a>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="card">
+      <div class="card-title">Full Interactive Dashboard</div>
+      <p style="color:var(--muted);font-size:.85rem;margin-bottom:14px;">
+        The full 5-tab HTML dashboard (Plotly-powered, works offline) with all charts and drill-down analysis.
+      </p>
+      <a href="/download_dashboard" class="btn btn-success">⬇ Download dashboard.html</a>
+    </div>
+  </div><!-- /tab-download -->
+
+</div><!-- /container -->
+
+<script>
+// ---- DATA FROM FLASK ----
+const rocData   = {{ roc_json }};
+const calData   = {{ cal_json }};
+const forecastData = {{ forecast_json }};
+const cmData    = {{ cm_json }};
+const driftRows = {{ s.drift_rows | tojson }};
+
+const PLOTLY_LAYOUT_BASE = {
+  paper_bgcolor: 'rgba(0,0,0,0)',
+  plot_bgcolor:  'rgba(0,0,0,0)',
+  font: { color: '#e8eaf6', size: 12 },
+  margin: { t: 30, r: 20, b: 50, l: 60 },
+  legend: { bgcolor: 'rgba(0,0,0,0)', borderwidth: 0 },
+  xaxis: { gridcolor: '#2d3250', linecolor: '#2d3250', zerolinecolor: '#2d3250' },
+  yaxis: { gridcolor: '#2d3250', linecolor: '#2d3250', zerolinecolor: '#2d3250' },
+};
+const CFG = { responsive: true, displayModeBar: false };
+
+// ---- ROC CURVE ----
+if (rocData) {
+  Plotly.newPlot('rocChart', [
+    { x: [0,1], y: [0,1], mode: 'lines', name: 'Random', line: { dash:'dash', color:'#444', width:1 } },
+    { x: rocData.fpr, y: rocData.tpr, mode: 'lines', name: `AUC = ${(rocData.auc||0).toFixed(4)}`,
+      line: { color:'#6c63ff', width:2.5 }, fill:'tozeroy', fillcolor:'rgba(108,99,255,0.12)' }
+  ], { ...PLOTLY_LAYOUT_BASE,
+    xaxis: { ...PLOTLY_LAYOUT_BASE.xaxis, title: 'False Positive Rate', range:[0,1] },
+    yaxis: { ...PLOTLY_LAYOUT_BASE.yaxis, title: 'True Positive Rate', range:[0,1] },
+  }, CFG);
+}
+
+// ---- CALIBRATION CURVE ----
+if (calData) {
+  Plotly.newPlot('calChart', [
+    { x: [0,1], y: [0,1], mode:'lines', name:'Perfect', line:{ dash:'dash', color:'#444', width:1 } },
+    { x: calData.prob_pred, y: calData.prob_true, mode:'lines+markers', name:'Model',
+      line:{ color:'#00d4aa', width:2.5 },
+      marker:{ size:7, color:'#00d4aa', symbol:'circle' } }
+  ], { ...PLOTLY_LAYOUT_BASE,
+    xaxis: { ...PLOTLY_LAYOUT_BASE.xaxis, title: 'Mean Predicted Probability', range:[0,1] },
+    yaxis: { ...PLOTLY_LAYOUT_BASE.yaxis, title: 'Fraction of Positives', range:[0,1] },
+  }, CFG);
+}
+
+// ---- CONFUSION MATRIX ----
+if (cmData) {
+  const labels = ['Not Churned (0)', 'Churned (1)'];
+  const z = cmData; // [[TN, FP], [FN, TP]]
+  Plotly.newPlot('cmChart', [{
+    z: z, x: labels, y: labels, type:'heatmap',
+    colorscale: [[0,'#1a1d27'],[0.5,'#4f46e5'],[1,'#6c63ff']],
+    showscale: false,
+    text: z.map(row => row.map(v => `<b>${v.toLocaleString()}</b>`)),
+    texttemplate: '%{text}',
+    textfont: { size: 18, color: '#fff' },
+    hovertemplate: 'Actual: %{y}<br>Predicted: %{x}<br>Count: %{z}<extra></extra>',
+  }], { ...PLOTLY_LAYOUT_BASE,
+    margin: { t:40, r:20, b:80, l:110 },
+    xaxis: { ...PLOTLY_LAYOUT_BASE.xaxis, title:'Predicted', tickfont:{ size:12 } },
+    yaxis: { ...PLOTLY_LAYOUT_BASE.yaxis, title:'Actual', tickfont:{ size:12 }, autorange:'reversed' },
+    annotations: [
+      { x:0, y:0, text:'TN', showarrow:false, font:{color:'#8892b0',size:10}, xref:'x', yref:'y', xshift:0, yshift:-20 },
+      { x:1, y:0, text:'FP', showarrow:false, font:{color:'#8892b0',size:10}, xref:'x', yref:'y', xshift:0, yshift:-20 },
+      { x:0, y:1, text:'FN', showarrow:false, font:{color:'#8892b0',size:10}, xref:'x', yref:'y', xshift:0, yshift:-20 },
+      { x:1, y:1, text:'TP', showarrow:false, font:{color:'#8892b0',size:10}, xref:'x', yref:'y', xshift:0, yshift:-20 },
+    ]
+  }, CFG);
+}
+
+// ---- FORECAST FAN CHART ----
+if (forecastData) {
+  const traces = [];
+
+  // Historical
+  if (forecastData.hist_months && forecastData.hist_months.length > 0) {
+    traces.push({
+      x: forecastData.hist_months, y: forecastData.hist_revenue,
+      mode:'lines', name:'Historical Revenue',
+      line:{ color:'#8892b0', width:2 }
+    });
+  }
+
+  // Prediction interval (fill between)
+  if (forecastData.upper && forecastData.upper.length > 0) {
+    traces.push({
+      x: [...forecastData.forecast_months, ...forecastData.forecast_months.slice().reverse()],
+      y: [...forecastData.upper, ...forecastData.lower.slice().reverse()],
+      fill:'toself', fillcolor:'rgba(108,99,255,0.12)', line:{ color:'transparent' },
+      showlegend:true, name:'80% Interval', hoverinfo:'skip'
+    });
+    traces.push({ x: forecastData.forecast_months, y: forecastData.lower, mode:'lines', name:'Lower', line:{color:'rgba(108,99,255,0.4)', dash:'dot', width:1}, showlegend:false });
+    traces.push({ x: forecastData.forecast_months, y: forecastData.upper, mode:'lines', name:'Upper', line:{color:'rgba(108,99,255,0.4)', dash:'dot', width:1}, showlegend:false });
+  }
+
+  // Forecast line
+  traces.push({
+    x: forecastData.forecast_months, y: forecastData.forecast_revenue,
+    mode:'lines', name:'Forecast',
+    line:{ color:'#6c63ff', width:2.5, dash:'dash' }
+  });
+
+  Plotly.newPlot('forecastChart', traces, { ...PLOTLY_LAYOUT_BASE,
+    xaxis: { ...PLOTLY_LAYOUT_BASE.xaxis, title:'Month' },
+    yaxis: { ...PLOTLY_LAYOUT_BASE.yaxis, title:'Revenue ($)', tickprefix:'$', tickformat:',.0f' },
+  }, CFG);
+}
+
+// ---- BACKTEST CHART ----
+if (forecastData && forecastData.test_months && forecastData.test_months.length > 0) {
+  Plotly.newPlot('backtestChart', [
+    { x: forecastData.test_months, y: forecastData.test_actual, mode:'lines+markers', name:'Actual',
+      line:{ color:'#00d4aa', width:2.5 }, marker:{ size:6 } },
+    { x: forecastData.test_months, y: forecastData.test_predicted, mode:'lines+markers', name:'Predicted',
+      line:{ color:'#ff6b81', width:2, dash:'dash' }, marker:{ size:6, symbol:'diamond' } }
+  ], { ...PLOTLY_LAYOUT_BASE,
+    xaxis:{ ...PLOTLY_LAYOUT_BASE.xaxis, title:'Month' },
+    yaxis:{ ...PLOTLY_LAYOUT_BASE.yaxis, title:'Revenue ($)', tickprefix:'$', tickformat:',.0f' }
+  }, CFG);
+}
+
+// ---- PSI BAR CHART ----
+if (driftRows && driftRows.length > 0) {
+  const features = driftRows.map(r => r.feature);
+  const psiVals  = driftRows.map(r => r.psi);
+  const colors   = driftRows.map(r =>
+    r.status === 'HIGH' ? '#ff4757' : r.status === 'MEDIUM' ? '#ffa502' : '#2ed573');
+  Plotly.newPlot('psiChart', [{
+    x: psiVals, y: features, type:'bar', orientation:'h',
+    marker:{ color: colors },
+    text: psiVals.map(v => v.toFixed(4)), textposition:'outside',
+    hovertemplate: '%{y}: PSI = %{x:.4f}<extra></extra>',
+    name:'PSI'
+  },
+  {
+    x: [0.1, 0.1], y: [features[0], features[features.length-1]],
+    mode:'lines', line:{ color:'#ffa502', dash:'dash', width:1 },
+    name:'Moderate threshold (0.1)', showlegend:true,
+    type:'scatter', orientation:'h'
+  },
+  {
+    x: [0.2, 0.2], y: [features[0], features[features.length-1]],
+    mode:'lines', line:{ color:'#ff4757', dash:'dash', width:1 },
+    name:'High drift threshold (0.2)', showlegend:true,
+    type:'scatter', orientation:'h'
+  }],
+  { ...PLOTLY_LAYOUT_BASE,
+    margin:{ t:20, r:80, b:50, l:160 },
+    xaxis:{ ...PLOTLY_LAYOUT_BASE.xaxis, title:'PSI Score', range:[0, Math.max(...psiVals)*1.25 || 0.3] },
+    yaxis:{ ...PLOTLY_LAYOUT_BASE.yaxis, autorange:'reversed' }
+  }, CFG);
+}
+
+// ---- TABS ----
+function switchTab(e, tabId) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  e.currentTarget.classList.add('active');
+  document.getElementById(tabId).classList.add('active');
+  // Trigger Plotly resize after tab switch
+  setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
+}
+</script>
+
+</body>
+</html>

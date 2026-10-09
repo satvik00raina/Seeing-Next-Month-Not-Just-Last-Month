@@ -1,0 +1,12 @@
+Metric,Value
+Customers Targeted,736.0
+Actual Churners,482.0
+True Positives,361.0
+False Positives,375.0
+Baseline Churn Rate,0.3420865862313698
+Targeted Churn Rate,0.4904891304347826
+Absolute Lift,0.1484025442034128
+Estimated Customers Saved,90.25
+Intervention Cost,14720.0
+Estimated Retained Value,45125.0
+Estimated Net Value,30405.0

@@ -1,0 +1,2 @@
+ForecastMonth,ProjectedRevenue,LowerBound_80%,UpperBound_80%,MAPE_Accuracy_Error,RMSE_Error_Dollar
+2025-11,520623.66,468026.66,523621.46,1.77%,"$10,515"
